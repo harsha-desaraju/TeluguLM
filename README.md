@@ -12,3 +12,7 @@ This repository is for training a decoder only model for Telugu from scratch.
 - Train the model
 - Evaluate the model and repeat the training until needed
 - Upload the model to the hugging face hub
+
+## Data
+- The training data consists of around 456M tokens.
+- The test data consists of around 24M tokens.
