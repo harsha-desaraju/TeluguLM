@@ -120,6 +120,11 @@ if __name__ == '__main__':
 
     dataset1.save_to_disk("dataset")
 
+    dataset1.push_to_hub(
+        repo_id="harsha-desaraju/telugu-text",
+        commit_message="initial upload",
+        max_shard_size="500MB"
+    )
 
 
 
