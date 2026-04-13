@@ -1,9 +1,11 @@
+import os
 import time
 import torch
 import numpy as np
 import torch.nn.functional as F
-from train_model_small import GPT, GPTConfig
 from tokenizers import Tokenizer
+from dotenv import load_dotenv
+load_dotenv()
 
 
 
@@ -52,15 +54,10 @@ def perplexity_fast(model, text, tokenizer, context_len=512):
 
 if __name__ == '__main__':
 
-    from pathlib import Path
-    import matplotlib.pyplot as plt
-
+    UPLOAD_MODEL = True
 
     # Load the tokenizer
-    tokenizer = Tokenizer.from_file("../tokenization/telugu_tokenizer/tokenizer.json")
-
-
-    # text = "తెలంగాణ, ఆంధ్ర రాష్ట్రాలలోని అధికారిక భాష తెలుగు. ఇది ద్రావిడ భాషా కుటుంబానికి చెందిన భాష. భారతదేశంలో ఒకటి కంటే ఎక్కువ రాష్ట్రాలలో మాటలాడే అధికారిక భాషలలో హిందీ, బెంగాలీలతో పాటు తెలుగు ఒకటి. పుదుచ్చేరిలోని యానం జిల్లాలో కూడా తెలుగు అధికారిక భాష. ఒడిశా, కర్ణాటక, తమిళనాడు, కేరళ, పంజాబ్, ఛత్తీస్‌గఢ్, మహారాష్ట్ర, అండమాన్ నికోబార్ దీవులలో గుర్తింపబడిన ద్వితీయ అధికారిక భాష. భారత ప్రభుత్వం భారతదేశ ప్రాచీన భాషలుగా గుర్తించిన ఆరుభాషలలో తెలుగు ఒకటి."
+    tokenizer = Tokenizer.from_file("../tokenization/telugu_tokenizer/telugu_unigram_tokenizer.json")
 
     text = """
 తెలుగు భారతదేశంలో మాట్లాడబడే ప్రధాన ద్రావిడ భాషలలో ఒకటి. ఇది ముఖ్యంగా ఆంధ్రప్రదేశ్ మరియు తెలంగాణ రాష్ట్రాలలో విస్తృతంగా ఉపయోగించబడుతుంది. తెలుగు భాషకు వేల సంవత్సరాల సాహిత్య సంప్రదాయం ఉంది. నన్నయ, తిక్కన, ఎర్రప్రగడ వంటి కవులు మహాభారతాన్ని తెలుగులో అనువదించి భాషకు అపారమైన కీర్తిని తెచ్చారు. కాలక్రమేణా తెలుగు సాహిత్యం కవిత్వం, నవలలు, నాటకాలు, వ్యాసాలు వంటి అనేక రూపాలలో అభివృద్ధి చెందింది.
@@ -75,25 +72,32 @@ if __name__ == '__main__':
 
 నేటి ప్రపంచంలో సమాచార ప్రసారం చాలా వేగంగా జరుగుతోంది. వార్తలు, వ్యాసాలు మరియు సామాజిక మాధ్యమాలు ప్రజల అభిప్రాయాలను ప్రభావితం చేస్తున్నాయి. సమాచారాన్ని జాగ్రత్తగా పరిశీలించడం మరియు నిజానిజాలను తెలుసుకోవడం ప్రతి పౌరుడి బాధ్యత. బాధ్యతాయుతమైన సమాచార వినియోగం సమాజానికి మేలు చేస్తుంది."""
 
-    model_path = "./models/model_checkpoint_23648.pt"
+    from transformers import AutoTokenizer, AutoModelForCausalLM
 
-    model_files = list(Path("./models/").rglob('*.pt'))
-    model_files = sorted(model_files, key=lambda x: int(x.name.split('.')[0].split('_')[-1]))
+    model_fol_path = "/Users/xai/Personal/Projects/TeluguLM/model_training/telugu_llama"
+    # model_fol_path = "/Users/xai/Personal/Projects/TeluguLM/model_training/telugu-gpt/checkpoint-107300"
 
-    perps, steps = [], []
-    for model_path in model_files[2:]:
-        checkpoint = torch.load(model_path, map_location=torch.device('cpu'), weights_only=True)
-        model = GPT(GPTConfig(vocab_size=32768, block_size=512, n_layer=8, n_head=8, n_embd=512))
-        model = torch.compile(model)
-        model.load_state_dict(checkpoint['model_state_dict'])
+    tokenizer = AutoTokenizer.from_pretrained(model_fol_path)
+    model = AutoModelForCausalLM.from_pretrained(model_fol_path)
 
-        perp = perplexity_fast(model, text, tokenizer)
-        print(f"{model_path.name:<50} {perp:<5.2f}")
+    model.eval()
 
-        perps.append(perp)
-        steps.append(int(model_path.name.split('.')[0].split('_')[-1]))
+    encodings = tokenizer(text, return_tensors="pt")
 
+    input_ids = encodings.input_ids
 
-    plt.plot(steps, perps)
-    plt.show()
+    # Calculate loss
+    with torch.no_grad():
+        outputs = model(input_ids, labels=input_ids)
+        loss = outputs.loss
+
+    # Perplexity
+    perplexity = torch.exp(loss)
+
+    print(f"Loss: {loss.item():.4f}")
+    print(f"Perplexity: {perplexity.item():.4f}")
+
+    if UPLOAD_MODEL:
+        model.push_to_hub("harsha-desaraju/telugu-llama-small", commit_message="version-1", token=os.getenv("HF_TOKEN"))
+
 
