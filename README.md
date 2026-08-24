@@ -1,7 +1,7 @@
 
 # Telugu-Llama 
 
-Telugu-GPT is a decoder-only Transformer language model trained from scratch for Telugu text modeling. The model is designed to capture linguistic patterns across literary, cultural, and modern Telugu corpora.
+Telugu-Llama is a decoder-only Transformer language model trained from scratch for Telugu text modeling. The model is designed to capture linguistic patterns across literary, cultural, and modern Telugu corpora.
 
 **Hugging Face Model Repository:**
 https://huggingface.co/harsha-desaraju/telugu-llama-small
